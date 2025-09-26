@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule, NgFor, NgIf } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Title } from '@angular/platform-browser';
+import { TestComponent } from './test.component';
 
 interface NavItem {
   path: string;
@@ -14,8 +15,9 @@ interface NavItem {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, NgFor, NgIf],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, NgFor, NgIf, TestComponent],
   template: `
+    <app-test></app-test>
     <div class="min-h-screen bg-gray-50 flex">
       <!-- Sidebar -->
       <div class="bg-gray-800 text-white w-64 min-h-screen flex-shrink-0 transition-all duration-300 ease-in-out">
@@ -175,10 +177,9 @@ export class App {
   
   navItems = signal<NavItem[]>([
     {
-      path: '/dashboard',
+      path: '/',
       label: 'Dashboard',
-      icon: '📊',
-      isOpen: false
+      icon: 'home',
     },
     {
       path: '/invoices',
@@ -188,20 +189,7 @@ export class App {
       children: [
         { path: '/invoices', label: 'All Invoices', icon: '📋' },
         { path: '/invoices/new', label: 'Create New', icon: '➕' },
-        { path: '/invoices/drafts', label: 'Drafts', icon: '📝' },
-        { path: '/invoices/paid', label: 'Paid', icon: '✅' },
-        { path: '/invoices/overdue', label: 'Overdue', icon: '⚠️' }
-      ]
-    },
-    {
-      path: '/clients',
-      label: 'Clients',
-      icon: '👥',
-      isOpen: false,
-      children: [
-        { path: '/clients', label: 'All Clients', icon: '👥' },
-        { path: '/clients/new', label: 'Add New', icon: '➕' },
-        { path: '/clients/groups', label: 'Groups', icon: '🏷️' }
+        { path: '/overdue', label: 'Overdue Payments', icon: '⚠️' },
       ]
     },
     {
