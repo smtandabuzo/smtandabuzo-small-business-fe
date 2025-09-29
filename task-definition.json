@@ -1,0 +1,48 @@
+{
+  "family": "small-business-task",
+  "networkMode": "awsvpc",
+  "executionRoleArn": "arn:aws:iam::810772959397:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::810772959397:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "small-business-fe",
+      "image": "810772959397.dkr.ecr.eu-north-1.amazonaws.com/small-business-fe:latest",
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/small-business-fe",
+          "awslogs-region": "eu-north-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        }
+      ]
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "runtimePlatform": {
+    "operatingSystemFamily": "LINUX",
+    "cpuArchitecture": "X86_64"
+  }
+}
