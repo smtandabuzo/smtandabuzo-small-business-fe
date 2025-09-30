@@ -2,8 +2,6 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule, NgFor, NgIf } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Title } from '@angular/platform-browser';
-import { HttpClientModule } from '@angular/common/http';
-import { AuthService } from './services/auth.service';
 
 interface NavItem {
   path: string;
@@ -16,32 +14,14 @@ interface NavItem {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    CommonModule, 
-    RouterOutlet, 
-    RouterLink, 
-    RouterLinkActive, 
-    NgFor, 
-    NgIf, 
-    HttpClientModule
-  ],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, NgFor, NgIf],
   template: `
-<div class="min-h-screen bg-gray-50 flex">
+    <div class="min-h-screen bg-gray-50 flex">
       <!-- Sidebar -->
       <div class="bg-gray-800 text-white w-64 min-h-screen flex-shrink-0 transition-all duration-300 ease-in-out">
         <div class="p-4 border-b border-gray-700">
           <h1 class="text-xl font-bold">Small Business</h1>
           <p class="text-gray-400 text-sm">Track Invoice Application</p>
-        </div>
-        
-        <!-- Auth Buttons -->
-        <div class="p-4 border-b border-gray-700">
-          <a 
-            routerLink="/signup" 
-            class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md transition-colors duration-200"
-          >
-            Sign Up
-          </a>
         </div>
         
         <!-- Navigation -->
@@ -195,9 +175,10 @@ export class App {
   
   navItems = signal<NavItem[]>([
     {
-      path: '/',
+      path: '/dashboard',
       label: 'Dashboard',
-      icon: 'home',
+      icon: '📊',
+      isOpen: false
     },
     {
       path: '/invoices',
@@ -207,7 +188,20 @@ export class App {
       children: [
         { path: '/invoices', label: 'All Invoices', icon: '📋' },
         { path: '/invoices/new', label: 'Create New', icon: '➕' },
-        { path: '/overdue', label: 'Overdue Payments', icon: '⚠️' },
+        { path: '/invoices/drafts', label: 'Drafts', icon: '📝' },
+        { path: '/invoices/paid', label: 'Paid', icon: '✅' },
+        { path: '/invoices/overdue', label: 'Overdue', icon: '⚠️' }
+      ]
+    },
+    {
+      path: '/clients',
+      label: 'Clients',
+      icon: '👥',
+      isOpen: false,
+      children: [
+        { path: '/clients', label: 'All Clients', icon: '👥' },
+        { path: '/clients/new', label: 'Add New', icon: '➕' },
+        { path: '/clients/groups', label: 'Groups', icon: '🏷️' }
       ]
     },
     {

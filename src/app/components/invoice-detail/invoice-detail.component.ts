@@ -11,11 +11,11 @@ import { switchMap } from 'rxjs/operators';
   standalone: true,
   imports: [CommonModule, RouterModule, DatePipe, ZarCurrencyPipe],
   template: `
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Back button -->
       <button 
         (click)="goBack()"
-        class="mb-6 inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-500"
+        class="mb-6 inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-500 transition-colors duration-150"
       >
         <svg class="h-5 w-5 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
@@ -117,24 +117,42 @@ import { switchMap } from 'rxjs/operators';
       </div>
 
       <!-- Action Buttons -->
-      <div *ngIf="!isLoading && invoice" class="mt-6 flex justify-end space-x-3">
-        <button 
-          type="button" 
-          (click)="goBack()"
-          class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-        >
-          Back to List
-        </button>
-        <button 
-          type="button" 
-          (click)="printInvoice()"
-          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-500 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-        >
-          <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" />
-          </svg>
-          Print
-        </button>
+      <div *ngIf="!isLoading && invoice" class="mt-8 pt-6 border-t border-gray-200 flex justify-between flex-col sm:flex-row space-y-3 sm:space-y-0">
+        <div class="flex space-x-3">
+          <button 
+            type="button" 
+            (click)="printInvoice()"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-150"
+          >
+            <svg class="-ml-0.5 mr-2 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v2h6v-2z" clip-rule="evenodd" />
+            </svg>
+            Print
+          </button>
+          <button 
+            *ngIf="invoice.status !== 'PAID'"
+            type="button" 
+            (click)="recordPayment()"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-150"
+          >
+            <svg class="-ml-0.5 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+            </svg>
+            Record Payment
+          </button>
+        </div>
+        <div>
+          <button 
+            type="button" 
+            (click)="goBack()"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-500 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-150"
+          >
+            <svg class="-ml-0.5 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+            </svg>
+            Back to Invoices
+          </button>
+        </div>
       </div>
     </div>
   `,
@@ -179,5 +197,28 @@ export class InvoiceDetailComponent implements OnInit {
 
   printInvoice(): void {
     window.print();
+  }
+
+  private zarPipe = new ZarCurrencyPipe();
+
+  recordPayment(): void {
+    if (!this.invoice) return;
+    
+    // Here you would typically open a payment dialog or navigate to a payment page
+    // For now, we'll just show a confirmation and update the status
+    const formattedAmount = this.zarPipe.transform(this.invoice.amount);
+    if (confirm(`Record payment of ${formattedAmount} for ${this.invoice.customerName}?`)) {
+      this.isLoading = true;
+      // In a real app, you would call your payment service here
+      // This is a mock implementation
+      setTimeout(() => {
+        if (this.invoice) {
+          this.invoice.status = 'PAID';
+          this.isLoading = false;
+          // Show success message
+          alert('Payment recorded successfully!');
+        }
+      }, 1000);
+    }
   }
 }

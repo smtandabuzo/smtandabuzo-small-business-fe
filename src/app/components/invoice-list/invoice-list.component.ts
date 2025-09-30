@@ -6,6 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatPaginatorModule } from '@angular/material/paginator';
 import { InvoiceService } from '../../services/invoice.service';
 import { PaymentService, PaymentMethod } from '../../services/payment.service';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
@@ -19,7 +20,8 @@ import { Invoice } from '../../models/invoice.model';
     RouterModule, 
     MatButtonModule,
     MatIconModule,
-    MatMenuModule
+    MatMenuModule,
+    MatPaginatorModule
   ],
   templateUrl: './invoice-list.component.html',
   styles: [`
@@ -36,8 +38,12 @@ import { Invoice } from '../../models/invoice.model';
 })
 export class InvoiceListComponent implements OnInit {
   invoices: any[] = [];
+  paginatedInvoices: any[] = [];
   isLoading = true;
   error: string | null = null;
+  currentPage = 1;
+  itemsPerPage = 6;
+  totalPages = 0;
 
   constructor(
     private invoiceService: InvoiceService,
@@ -76,6 +82,8 @@ export class InvoiceListComponent implements OnInit {
     this.invoiceService.getInvoices().subscribe({
       next: (invoices) => {
         this.invoices = invoices;
+        this.totalPages = Math.ceil(this.invoices.length / this.itemsPerPage);
+        this.updatePaginatedInvoices();
         this.isLoading = false;
       },
       error: (error) => {
@@ -84,6 +92,33 @@ export class InvoiceListComponent implements OnInit {
         this.isLoading = false;
       }
     });
+  }
+
+  updatePaginatedInvoices(): void {
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    this.paginatedInvoices = this.invoices.slice(startIndex, endIndex);
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+      this.updatePaginatedInvoices();
+    }
+  }
+
+  nextPage(): void {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.updatePaginatedInvoices();
+    }
+  }
+
+  prevPage(): void {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.updatePaginatedInvoices();
+    }
   }
 
   openPaymentDialog(invoice: any): void {
