@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: your-aws-region
+  AWS_REGION: eu-north-1
   ECR_REPOSITORY: small-business-fe
   ECS_SERVICE: small-business-fe-service
   ECS_CLUSTER: small-business-cluster
