@@ -1,69 +1,97 @@
-<div class="signup-container">
-  <mat-card class="signup-card">
-    <mat-card-header>
-      <mat-card-title>Create an Account</mat-card-title>
-    </mat-card-header>
-    
-    <mat-card-content>
-      <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="signup-form">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Username</mat-label>
-          <input matInput formControlName="username" required>
-          <mat-error *ngIf="signupForm.get('username')?.hasError('required')">
-            Username is required
-          </mat-error>
-          <mat-error *ngIf="signupForm.get('username')?.hasError('minlength')">
-            Username must be at least 3 characters
-          </mat-error>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Email</mat-label>
-          <input matInput type="email" formControlName="email" required>
-          <mat-error *ngIf="signupForm.get('email')?.hasError('required')">
-            Email is required
-          </mat-error>
-          <mat-error *ngIf="signupForm.get('email')?.hasError('email')">
-            Please enter a valid email
-          </mat-error>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Password</mat-label>
-          <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" required>
-          <button type="button" mat-icon-button matSuffix (click)="hidePassword = !hidePassword">
-            <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
-          </button>
-          <mat-error *ngIf="signupForm.get('password')?.hasError('required')">
-            Password is required
-          </mat-error>
-          <mat-error *ngIf="signupForm.get('password')?.hasError('minlength')">
-            Password must be at least 6 characters
-          </mat-error>
-        </mat-form-field>
-
-        <div *ngIf="errorMessage" class="error-message">
-          {{ errorMessage }}
-        </div>
-
-        <button 
-          mat-raised-button 
-          color="primary" 
-          type="submit" 
-          [disabled]="signupForm.invalid || isLoading"
-          class="full-width"
+<div class="max-w-3xl mx-auto p-6 bg-white rounded-lg shadow-md">
+  <h2 class="text-2xl font-bold text-gray-800 mb-6">Create an Account</h2>
+  
+  <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="md:col-span-2">
+        <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
+          Username <span class="text-error-500">*</span>
+        </label>
+        <input
+          type="text"
+          id="username"
+          formControlName="username"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          [class.border-error-300]="signupForm.get('username')?.invalid && signupForm.get('username')?.touched"
         >
-          <span *ngIf="isLoading" class="spinner-container">
-            <mat-spinner diameter="20"></mat-spinner>
-            <span>Signing up...</span>
-          </span>
-          <span *ngIf="!isLoading">Sign Up</span>
-        </button>
-      </form>
-
-      <div class="login-link">
-        Already have an account? <a routerLink="/login">Log in</a>
+        <div *ngIf="signupForm.get('username')?.invalid && signupForm.get('username')?.touched" class="mt-1 text-sm text-error-600">
+          <div *ngIf="signupForm.get('username')?.hasError('required')">Username is required</div>
+          <div *ngIf="signupForm.get('username')?.hasError('minlength')">Username must be at least 3 characters</div>
+        </div>
       </div>
-    </mat-card-content>
-  </mat-card>
+
+      <div class="md:col-span-2">
+        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+          Email <span class="text-error-500">*</span>
+        </label>
+        <input
+          type="email"
+          id="email"
+          formControlName="email"
+          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          [class.border-error-300]="signupForm.get('email')?.invalid && signupForm.get('email')?.touched"
+        >
+        <div *ngIf="signupForm.get('email')?.invalid && signupForm.get('email')?.touched" class="mt-1 text-sm text-error-600">
+          <div *ngIf="signupForm.get('email')?.hasError('required')">Email is required</div>
+          <div *ngIf="signupForm.get('email')?.hasError('email')">Please enter a valid email</div>
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
+          Password <span class="text-error-500">*</span>
+        </label>
+        <div class="relative">
+          <input
+            [type]="hidePassword ? 'password' : 'text'"
+            id="password"
+            formControlName="password"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 pr-10"
+            [class.border-error-300]="signupForm.get('password')?.invalid && signupForm.get('password')?.touched"
+          >
+          <button 
+            type="button" 
+            (click)="hidePassword = !hidePassword"
+            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+            tabindex="-1"
+          >
+            <span class="material-icons text-xl">
+              {{ hidePassword ? 'visibility_off' : 'visibility' }}
+            </span>
+          </button>
+        </div>
+        <div *ngIf="signupForm.get('password')?.invalid && signupForm.get('password')?.touched" class="mt-1 text-sm text-error-600">
+          <div *ngIf="signupForm.get('password')?.hasError('required')">Password is required</div>
+          <div *ngIf="signupForm.get('password')?.hasError('minlength')">Password must be at least 6 characters</div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="errorMessage" class="mt-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
+      {{ errorMessage }}
+    </div>
+
+    <div class="flex items-center justify-between pt-4">
+      <div class="text-sm text-gray-600">
+        Already have an account? 
+        <a routerLink="/login" class="font-medium text-primary-600 hover:text-primary-500">
+          Log in
+        </a>
+      </div>
+      <button
+        type="submit"
+        [disabled]="signupForm.invalid || isLoading"
+        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <span *ngIf="isLoading" class="flex items-center">
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Signing up...
+        </span>
+        <span *ngIf="!isLoading">Sign Up</span>
+      </button>
+    </div>
+  </form>
 </div>

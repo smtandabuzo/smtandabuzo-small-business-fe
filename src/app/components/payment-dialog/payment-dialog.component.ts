@@ -18,6 +18,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { map, startWith } from 'rxjs/operators';
 import { Observable } from 'rxjs';
+import { trigger, transition, style, animate } from '@angular/animations';
 
 export interface PaymentDialogData {
   invoiceId: number;
@@ -46,6 +47,17 @@ export interface Payment {
 @Component({
   selector: 'app-payment-dialog',
   standalone: true,
+  animations: [
+    trigger('fadeInOut', [
+      transition(':enter', [
+        style({ opacity: 0 }),
+        animate('200ms ease-in', style({ opacity: 1 }))
+      ]),
+      transition(':leave', [
+        animate('200ms ease-out', style({ opacity: 0 }))
+      ])
+    ])
+  ],
   providers: [DatePipe],
   imports: [
     CommonModule,
@@ -119,6 +131,10 @@ export class PaymentDialogComponent implements OnInit {
       startWith(''),
       map(value => this._filterPaymentMethods(value || ''))
     );
+
+    // Initialize card details visibility based on initial payment method
+    this.showCardDetails = this.paymentForm.get('paymentMethod')?.value === PaymentMethod.CREDIT_CARD;
+    this.updateValidators();
 
     this.paymentForm.get('paymentMethod')?.valueChanges.subscribe(method => {
       this.showCardDetails = method === PaymentMethod.CREDIT_CARD;
@@ -294,7 +310,26 @@ export class PaymentDialogComponent implements OnInit {
     const cardCvv = group.get('cardCvv')?.value;
 
     if (paymentMethod === PaymentMethod.CREDIT_CARD) {
-      if (!cardNumber || !cardExpiry || !cardCvv) {
+      // Check if any card field is empty or contains only whitespace
+      if (!cardNumber?.trim() || !cardExpiry?.trim() || !cardCvv?.trim()) {
+        return { cardDetailsRequired: true };
+      }
+
+      // Additional validation for card number length (after removing spaces)
+      const cardNumberDigits = cardNumber.replace(/\s+/g, '');
+      if (cardNumberDigits.length < 12 || cardNumberDigits.length > 19) {
+        return { cardDetailsRequired: true };
+      }
+
+      // Additional validation for expiry date format (MM/YY)
+      const expiryRegex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/;
+      if (!expiryRegex.test(cardExpiry)) {
+        return { cardDetailsRequired: true };
+      }
+
+      // Additional validation for CVV length (3-4 digits)
+      const cvvRegex = /^\d{3,4}$/;
+      if (!cvvRegex.test(cardCvv)) {
         return { cardDetailsRequired: true };
       }
     }
