@@ -49,20 +49,20 @@ jobs:
     - name: Download task definition
       run: |
         aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} \
-          --query 'taskDefinition' > task-definition.json
+          --query 'taskDefinition' > task-definition-clean.json
     
     - name: Update task definition with new image
       id: update-task-definition
       run: |
         jq --arg IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}" \
-          '.containerDefinitions[0].image = $IMAGE' task-definition.json > updated-task-definition.json
+          '.containerDefinitions[0].image = $IMAGE' task-definition.json > task-definition-clean.json
         cat updated-task-definition.json
     
     - name: Register new task definition
       id: register-task-definition
       run: |
         TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
-          --cli-input-json file://updated-task-definition.json \
+          --cli-input-json file://task-definition-clean.json \
           --query 'taskDefinition.taskDefinitionArn' \
           --output text)
         echo "TASK_DEFINITION_ARN=$TASK_DEFINITION_ARN" >> $GITHUB_ENV
