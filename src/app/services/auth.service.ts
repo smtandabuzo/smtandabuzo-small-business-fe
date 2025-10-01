@@ -73,28 +73,35 @@ export class AuthService {
   }
 
   signUp(signUpData: SignUpRequest): Observable<AuthResponse> {
+    // For local development, we don't need to include credentials
     const httpOptions = {
       headers: new HttpHeaders({
         'Content-Type': 'application/json'
       }),
-      withCredentials: true
+      withCredentials: environment.useProxy ? false : true
     };
 
-    // Expected signup payload format:
-    // { "username": "testuser", "email": "test@example.com", "password": "password123", "roles": ["user"] }
+    // Try with a simpler payload first
     const signupPayload = {
       username: signUpData.username,
       email: signUpData.email,
-      password: signUpData.password,
-      roles: ['user']  // Default role
+      password: signUpData.password
+      // Remove roles as it might be causing issues with the backend
     };
 
+    console.log('Attempting to sign up with:', {
+      url: `${this.apiUrl}/signup`,
+      useProxy: environment.useProxy,
+      environment: environment.production ? 'production' : 'development'
+    });
+
     return this.http.post<AuthResponse>(
-      `${this.apiUrl}/signup`,
+      `${this.apiUrl}/signup`,  // Try /signup first
       signupPayload,
       httpOptions
     ).pipe(
       tap(response => {
+        console.log('Signup successful:', response);
         if (response.token && response.user) {
           this.storeAuthData(response);
           this.isLoggedInSubject.next(true);
@@ -102,6 +109,32 @@ export class AuthService {
         }
       }),
       catchError(error => {
+        console.error('Signup error:', {
+          error,
+          status: error.status,
+          message: error.message,
+          url: error.url,
+          method: error.method
+        });
+        
+        // If signup with /signup fails, try with /register
+        if (error.status === 405) {
+          console.log('Trying with /register endpoint');
+          return this.http.post<AuthResponse>(
+            `${this.apiUrl}/register`,
+            signupPayload,
+            httpOptions
+          ).pipe(
+            tap(registerResponse => {
+              if (registerResponse.token && registerResponse.user) {
+                this.storeAuthData(registerResponse);
+                this.isLoggedInSubject.next(true);
+                this.currentUserSubject.next(registerResponse.user);
+              }
+            })
+          );
+        }
+        
         this.clearAuthData();
         throw error;
       })
