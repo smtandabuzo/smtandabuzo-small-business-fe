@@ -56,7 +56,7 @@ jobs:
       run: |
         jq --arg IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}" \
           '.containerDefinitions[0].image = $IMAGE' task-definition.json > task-definition-clean.json
-        cat updated-task-definition.json
+        cat task-definition-clean.json
     
     - name: Register new task definition
       id: register-task-definition
