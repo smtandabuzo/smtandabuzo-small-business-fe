@@ -1,8 +1,9 @@
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient, withInterceptors, withInterceptorsFromDi } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, withInterceptorsFromDi, HTTP_INTERCEPTORS, withFetch } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideBrowserGlobalErrorListeners } from './core/error/error-handler';
+import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 
 import { routes } from './app.routes';
 
@@ -14,8 +15,12 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     provideHttpClient(
       withInterceptorsFromDi(),
-      // Add any interceptors here if needed
-      // withInterceptors([yourInterceptor])
-    )
+      withFetch() // Add fetch-based HTTP client for better performance
+    ),
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthInterceptor,
+      multi: true
+    }
   ]
 };
