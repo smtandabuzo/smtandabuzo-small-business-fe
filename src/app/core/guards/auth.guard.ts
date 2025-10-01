@@ -3,6 +3,26 @@ import { CanActivateFn, ActivatedRouteSnapshot, RouterStateSnapshot, Router, Url
 import { Observable, map, take, catchError, of } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 
+// Helper function to clean and validate returnUrl
+function getValidReturnUrl(returnUrl: string | null): string | null {
+  if (!returnUrl) return null;
+  
+  // Prevent redirect loops by checking for existing returnUrl in the path
+  if (returnUrl.includes('returnUrl=')) {
+    const url = new URL(returnUrl, 'http://dummy.com');
+    if (url.searchParams.has('returnUrl')) {
+      return null; // Already has a returnUrl, prevent nesting
+    }
+  }
+  
+  // Only allow relative URLs for security
+  if (returnUrl.startsWith('http')) {
+    return null;
+  }
+  
+  return returnUrl;
+}
+
 export const AuthGuard: CanActivateFn = (
   next: ActivatedRouteSnapshot,
   state: RouterStateSnapshot
@@ -36,22 +56,27 @@ export const AuthGuard: CanActivateFn = (
         return true;
       }
 
-      // Not logged in, redirect to login page with the return url
+      // Not logged in, redirect to login page with a clean return url
       console.log('[AuthGuard] User not authenticated, redirecting to login');
-      authService.redirectUrl = state.url;
-      console.log('[AuthGuard] Stored redirect URL:', state.url);
       
-      const urlTree = router.createUrlTree(
-        ['/login'], 
-        { queryParams: { returnUrl: state.url } }
-      );
+      // Clean and validate the return URL
+      const cleanReturnUrl = getValidReturnUrl(state.url);
       
-      console.log('[AuthGuard] Created URL tree for login:', urlTree.toString());
-      return urlTree;
+      // Only set redirectUrl if it's a clean URL
+      if (cleanReturnUrl) {
+        authService.redirectUrl = cleanReturnUrl;
+        console.log('[AuthGuard] Stored clean redirect URL:', cleanReturnUrl);
+      } else {
+        console.log('[AuthGuard] Using default redirect URL (dashboard)');
+        authService.redirectUrl = '/dashboard';
+      }
+      
+      // Always redirect to /auth/login without returnUrl to prevent loops
+      return router.createUrlTree(['/auth/login']);
     }),
     catchError(error => {
       console.error('[AuthGuard] Error checking authentication:', error);
-      return of(router.createUrlTree(['/login']));
+      return of(router.createUrlTree(['/auth/login']));
     })
   );
 };

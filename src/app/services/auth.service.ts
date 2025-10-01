@@ -10,12 +10,25 @@ import { SignUpRequest, AuthResponse, User } from '../models/user.model';
 })
 export class AuthService {
   private apiUrl = '/api/auth'; // Use relative URL since we're using a proxy
-  private isAuthenticated = new BehaviorSubject<boolean>(false);
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  private isLoggedInSubject: BehaviorSubject<boolean>;
+  private currentUserSubject: BehaviorSubject<User | null>;
+  redirectUrl: string | null = null;
+
+  constructor(private http: HttpClient, private router: Router) {
+    // Initialize subjects with values from localStorage
+    const token = localStorage.getItem('auth_token');
+    const userJson = localStorage.getItem('user');
+    const user = userJson ? JSON.parse(userJson) : null;
+    
+    this.isLoggedInSubject = new BehaviorSubject<boolean>(!!token);
+    this.currentUserSubject = new BehaviorSubject<User | null>(user);
+    
+    console.log('[AuthService] Initialized with token:', !!token, 'user:', user);
+  }
 
   // Expose the authentication state as an observable
   get isLoggedIn$(): Observable<boolean> {
-    return this.isAuthenticated.asObservable();
+    return this.isLoggedInSubject.asObservable();
   }
 
   // Get the current user
@@ -23,71 +36,26 @@ export class AuthService {
     return this.currentUserSubject.asObservable();
   }
 
-  // Store the URL so we can redirect after logging in
-  redirectUrl: string | null = null;
-
-  constructor(
-    private http: HttpClient,
-    private router: Router
-  ) {
-    // Check if user is already logged in
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      this.isAuthenticated.next(true);
-    }
-  }
-
-  login(credentials: { username: string; password: string }): Observable<AuthResponse> {
-    console.log('[AuthService] Starting login process');
-    const httpOptions = {
-      headers: new HttpHeaders({
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      })
-    };
-
-    // Expected login payload format: { "username": "testuser", "password": "password123" }
-    const loginData = {
-      username: credentials.username,
-      password: credentials.password
-    };
-
-    console.log('[AuthService] Sending login request to:', `${this.apiUrl}/signin`);
-    console.log('[AuthService] Login data:', loginData);
-
-    return this.http.post<AuthResponse>(
-      `${this.apiUrl}/signin`,
-      loginData,
-      httpOptions
-    ).pipe(
+  login(credentials: { username: string; password: string }): Observable<any> {
+    console.log('[AuthService] Login request started');
+    return this.http.post<any>(`${this.apiUrl}/signin`, credentials).pipe(
       tap({
-        next: (response: AuthResponse) => {
-          console.log('[AuthService] Login successful, response:', response);
-          if (response.token && response.user) {
-            console.log('[AuthService] Storing auth data');
-            this.storeAuthData(response.token, response.user);
-            console.log('[AuthService] Updating auth state');
-            this.isAuthenticated.next(true);
-            this.currentUserSubject.next(response.user);
-            console.log('[AuthService] Auth state updated, isAuthenticated:', true);
-          } else {
-            console.error('[AuthService] Invalid response format, missing token or user');
+        next: (response) => {
+          console.log('[AuthService] Login successful, storing auth data');
+          if (response && response.accessToken) {
+            this.storeAuthData(response);
+            // No need to call next() here as storeAuthData will do it
+            console.log('[AuthService] Auth data stored, isLoggedIn should be true');
           }
         },
         error: (error) => {
           console.error('[AuthService] Login error:', error);
-          if (error.error) {
-            console.error('[AuthService] Error details:', error.error);
-          }
-          console.log('[AuthService] Clearing auth data due to error');
           this.clearAuthData();
-        },
-        complete: () => {
-          console.log('[AuthService] Login request completed');
         }
+      }),
+      catchError(error => {
+        this.clearAuthData();
+        throw error;
       })
     );
   }
@@ -116,8 +84,8 @@ export class AuthService {
     ).pipe(
       tap(response => {
         if (response.token && response.user) {
-          this.storeAuthData(response.token, response.user);
-          this.isAuthenticated.next(true);
+          this.storeAuthData(response);
+          this.isLoggedInSubject.next(true);
           this.currentUserSubject.next(response.user);
         }
       }),
@@ -128,17 +96,26 @@ export class AuthService {
     );
   }
 
-  private storeAuthData(token: string, user: User): void {
-    localStorage.setItem('auth_token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    this.isAuthenticated.next(true);
-    this.currentUserSubject.next(user);
+  private storeAuthData(authData: any): void {
+    console.log('[AuthService] Storing auth data in localStorage');
+    localStorage.setItem('auth_token', authData.accessToken);
+    if (authData.refreshToken) {
+      localStorage.setItem('refresh_token', authData.refreshToken);
+    }
+    const userData = authData.user || {};
+    localStorage.setItem('user', JSON.stringify(userData));
+    
+    // Update both subjects and ensure they're in sync
+    this.currentUserSubject.next(userData);
+    this.isLoggedInSubject.next(true);
+    
+    console.log('[AuthService] Auth state updated - isLoggedIn:', true, 'user:', userData);
   }
 
   clearAuthData(): void {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
-    this.isAuthenticated.next(false);
+    this.isLoggedInSubject.next(false);
     this.currentUserSubject.next(null);
   }
 
@@ -158,9 +135,9 @@ export class AuthService {
     console.log('[AuthService] Token exists:', isAuthenticated);
 
     // If we have a token but the state doesn't reflect it, update the state
-    if (isAuthenticated && !this.isAuthenticated.value) {
+    if (isAuthenticated && !this.isLoggedInSubject.value) {
       console.log('[AuthService] Updating auth state to authenticated');
-      this.isAuthenticated.next(true);
+      this.isLoggedInSubject.next(true);
       const user = this.getCurrentUser();
       if (user) {
         console.log('[AuthService] Found user in localStorage');
@@ -175,17 +152,17 @@ export class AuthService {
     }
 
     // Return the current authentication state
-    return this.isAuthenticated.asObservable().pipe(
+    return this.isLoggedInSubject.asObservable().pipe(
       tap(isAuth => console.log('[AuthService] Current auth state:', isAuth))
     );
   }
 
-  logout(redirectToLogin: boolean = true): void {
-    // Call your logout API if needed
+  logout(): void {
+    console.log('[AuthService] Logging out');
     this.clearAuthData();
-    if (redirectToLogin) {
-      this.router.navigate(['/auth/login']);
-    }
+    this.isLoggedInSubject.next(false);
+    // Use replaceUrl to prevent going back to protected pages after logout
+    this.router.navigate(['/auth/login'], { replaceUrl: true });
   }
 
   // Check if user has specific role
