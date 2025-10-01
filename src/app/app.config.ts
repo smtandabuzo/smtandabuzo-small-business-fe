@@ -4,6 +4,7 @@ import { provideHttpClient, withInterceptors, withInterceptorsFromDi, HTTP_INTER
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideBrowserGlobalErrorListeners } from './core/error/error-handler';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
+import { CorsInterceptor } from './core/interceptors/cors.interceptor';
 
 import { routes } from './app.routes';
 
@@ -17,6 +18,13 @@ export const appConfig: ApplicationConfig = {
       withInterceptorsFromDi(),
       withFetch() // Add fetch-based HTTP client for better performance
     ),
+    // Add CORS interceptor first to ensure headers are set before other interceptors
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: CorsInterceptor,
+      multi: true
+    },
+    // Then add Auth interceptor
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,

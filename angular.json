@@ -59,14 +59,27 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "proxyConfig": "proxy.conf.json"
+            "proxyConfig": "proxy.conf.json",
+            "cors": true,
+            "host": "localhost",
+            "port": 4200,
+            "ssl": false,
+            "publicHost": "localhost:4200",
+            "servePath": "/",
+            "disableHostCheck": true,
+            "liveReload": true,
+            "hmr": false,
+            "watch": true,
+            "poll": 1000
           },
           "configurations": {
             "production": {
-              "buildTarget": "small-business-fe:build:production"
+              "buildTarget": "small-business-fe:build:production",
+              "proxyConfig": "proxy.conf.json"
             },
             "development": {
-              "buildTarget": "small-business-fe:build:development"
+              "buildTarget": "small-business-fe:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

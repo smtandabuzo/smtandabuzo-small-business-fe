@@ -10,10 +10,8 @@ import { AuthGuard } from './core/guards/auth.guard';
 import { NoAuthGuard } from './core/guards/no-auth.guard';
 import { MainLayoutComponent } from './layouts/main-layout/main-layout.component';
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
-import { provideHttpClient } from '@angular/common/http';
 
-// Public routes (no authentication required)
-export const publicRoutes: Routes = [
+export const routes: Routes = [
   {
     path: 'auth',
     component: AuthLayoutComponent,
@@ -21,79 +19,38 @@ export const publicRoutes: Routes = [
     children: [
       { 
         path: 'login', 
-        component: LoginComponent
+        component: LoginComponent,
+        canActivate: [NoAuthGuard]
       },
       { 
         path: 'signup', 
-        component: SignupComponent
-      },
-      // Add this route for the redirect
-      {
-        path: 'redirect',
-        redirectTo: '/dashboard',
-        pathMatch: 'full'
+        component: SignupComponent,
+        canActivate: [NoAuthGuard]
       },
       { path: '', redirectTo: 'login', pathMatch: 'full' }
     ]
-  }
-];
-
-// Protected routes (authentication required)
-export const protectedRoutes: Routes = [
+  },
   {
     path: '',
     component: MainLayoutComponent,
     canActivate: [AuthGuard],
     children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', component: ItemList },
+      { path: 'invoices', component: InvoiceListComponent },
+      { path: 'invoices/new', component: InvoiceFormComponent },
+      { path: 'invoices/:id', component: InvoiceDetailComponent },
+      { path: 'invoices/edit/:id', component: InvoiceFormComponent },
+      { path: 'clients', component: ItemList },
+      { path: 'products', component: ItemList },
+      { path: 'expenses', component: ItemList },
       { 
-        path: 'dashboard', 
-        component: ItemList,
-        pathMatch: 'full',
-        // Provide required providers for standalone components
-        providers: [provideHttpClient()]
+        path: 'reports', 
+        loadChildren: () => import('./features/reports/reports.module').then(m => m.ReportsModule),
+        canActivate: [AuthGuard]
       },
-      { 
-        path: '', 
-        redirectTo: 'dashboard',
-        pathMatch: 'full'
-      },
-      { 
-        path: 'new', 
-        component: ItemForm,
-        data: { roles: ['ADMIN', 'EDITOR'] },
-        providers: [provideHttpClient()]
-      },
-      { 
-        path: 'invoices', 
-        component: InvoiceListComponent,
-        providers: [provideHttpClient()]
-      },
-      { 
-        path: 'invoices/new', 
-        component: InvoiceFormComponent,
-        data: { roles: ['ADMIN', 'EDITOR'] },
-        providers: [provideHttpClient()]
-      },
-      { 
-        path: 'invoices/:id', 
-        component: InvoiceDetailComponent,
-        providers: [provideHttpClient()]
-      },
-      { 
-        path: 'invoices/edit/:id', 
-        component: InvoiceFormComponent,
-        data: { roles: ['ADMIN', 'EDITOR'] },
-        providers: [provideHttpClient()]
-      },
+      { path: 'settings', component: ItemList }
     ]
-  }
+  },
+  { path: '**', redirectTo: '/dashboard' }
 ];
-
-// Combine all routes
-const appRoutes: Routes = [
-  ...publicRoutes,
-  ...protectedRoutes,
-  { path: '**', redirectTo: '/dashboard' } // Fallback route
-];
-
-export const routes = appRoutes;

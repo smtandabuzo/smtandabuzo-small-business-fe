@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { BehaviorSubject, Observable, of } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
+import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
+import { tap, catchError, map } from 'rxjs/operators';
 import { Router } from '@angular/router';
-import { SignUpRequest, AuthResponse, User } from '../models/user.model';
+import { SignUpRequest, AuthResponse, User, UserWithPassword, UserCredentials } from '../models/user.model';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -14,6 +14,15 @@ export class AuthService {
   private isLoggedInSubject: BehaviorSubject<boolean>;
   private currentUserSubject: BehaviorSubject<User | null>;
   redirectUrl: string | null = null;
+
+  // Clear authentication data
+  clearAuthData = (): void => {
+    console.log('[AuthService] Clearing auth data');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    this.currentUserSubject.next(null);
+    this.isLoggedInSubject.next(false);
+  };
 
   constructor(private http: HttpClient, private router: Router) {
     // Initialize subjects with values from localStorage
@@ -37,139 +46,198 @@ export class AuthService {
     return this.currentUserSubject.asObservable();
   }
 
+  /**
+   * Logs out the current user by clearing authentication data
+   * and redirecting to the login page
+   */
+
   // Get the current authentication token
   getToken(): string | null {
-    const token = localStorage.getItem('auth_token');
-    console.log('[AuthService] Retrieved token from localStorage:', token ? 'Token exists' : 'No token found');
-    return token;
+    return localStorage.getItem('auth_token');
   }
 
-  login(credentials: { username: string; password: string }): Observable<any> {
-    return this.http.post(`${this.apiUrl}/signin`, credentials).pipe(
-      tap({
-        next: (response: any) => {
-          if (response && response.token) {
-            this.storeAuthData(response);
-            this.isLoggedInSubject.next(true);
-            // Store the user data in the behavior subject
-            if (response.user) {
-              this.currentUserSubject.next(response.user);
-            }
-            // Navigate to the return URL if available, or to the dashboard
-            const returnUrl = this.redirectUrl || '/dashboard';
-            this.router.navigateByUrl(returnUrl);
-          } else {
-            console.error('[AuthService] No token in login response');
-            throw new Error('No authentication token received');
-          }
-        },
-        error: (error) => {
-          console.error('[AuthService] Login error:', error);
-          this.clearAuthData();
-          throw error;
+  // Store authentication data in local storage and update current user
+  private storeAuthData(authData: { token: string; user: User }): void {
+    // Store token in local storage
+    localStorage.setItem('auth_token', authData.token);
+
+    // Store user data in local storage
+    if (authData.user) {
+      localStorage.setItem('user', JSON.stringify(authData.user));
+      this.currentUserSubject.next(authData.user);
+    }
+  }
+
+  login(credentials: UserCredentials): Observable<AuthResponse> {
+    // Prepare the request URL - use relative URL with proxy in development
+    const url = environment.useProxy
+      ? `${environment.apiUrl}/login`  // Proxy will handle the /api prefix
+      : `${environment.apiUrl}/auth/login`;  // Full URL in production
+
+    // Prepare the request options
+    const httpOptions = {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }),
+      withCredentials: environment.useProxy, // Send credentials with CORS in production
+      observe: 'response' as const, // This makes it return HttpResponse
+      responseType: 'json' as const
+    };
+
+    return this.http.post<AuthResponse>(
+      url,
+      credentials,
+      httpOptions
+    ).pipe(
+      map(response => {
+        if (!response.body) {
+          throw new Error('No response body received');
         }
+        return response.body;
+      }),
+      tap((responseData: AuthResponse) => {
+        if (environment.debug) {
+          console.log('AuthService - Login successful:', {
+            user: {
+              id: responseData.id,
+              username: responseData.username,
+              email: responseData.email,
+              roles: responseData.roles
+            }
+          });
+        }
+
+        if (responseData.token) {
+          this.storeAuthData({
+            token: responseData.token,
+            user: {
+              id: responseData.id,
+              username: responseData.username,
+              email: responseData.email,
+              roles: responseData.roles || []
+            },
+          });
+
+          // Navigate to the dashboard or return URL
+          const returnUrl = this.redirectUrl || '/dashboard';
+          this.router.navigateByUrl(returnUrl);
+        }
+      }),
+      catchError((error: any) => {
+        if (environment.debug) {
+          console.error('AuthService - Login error:', error);
+        }
+
+        let errorMessage = 'Login failed. Please check your credentials.';
+
+        if (!error.status) {
+          errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+        } else if (error.status === 400) {
+          errorMessage = error.error?.message || 'Invalid username or password.';
+        } else if (error.status === 401) {
+          errorMessage = 'Invalid username or password.';
+        } else if (error.status === 403) {
+          errorMessage = 'Account not activated. Please check your email.';
+        } else if (error.status === 404) {
+          errorMessage = 'User not found. Please check your credentials.';
+        } else if (error.status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+
+        return throwError(() => new Error(errorMessage));
       })
     );
   }
 
   signUp(signUpData: SignUpRequest): Observable<AuthResponse> {
-    // For local development, we don't need to include credentials
+    // Prepare the request URL - use relative URL with proxy in development
+    const url = environment.useProxy
+      ? `${environment.apiUrl}/signup`  // Proxy will handle the /api prefix
+      : `${environment.apiUrl}/auth/signup`;  // Full URL in production
+
+    // Prepare the request options
     const httpOptions = {
       headers: new HttpHeaders({
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       }),
-      withCredentials: environment.useProxy ? false : true
+      withCredentials: environment.useProxy, // Send credentials with CORS in production
+      observe: 'response' as const
     };
 
-    // Try with a simpler payload first
+    // Prepare the signup payload
     const signupPayload = {
       username: signUpData.username,
       email: signUpData.email,
       password: signUpData.password
-      // Remove roles as it might be causing issues with the backend
     };
 
-    console.log('Attempting to sign up with:', {
-      url: `${this.apiUrl}/signup`,
-      useProxy: environment.useProxy,
-      environment: environment.production ? 'production' : 'development'
-    });
+    if (environment.debug) {
+      console.log('AuthService - Signup request:', {
+        url,
+        environment: environment.production ? 'production' : 'development',
+        useProxy: environment.useProxy,
+        payload: { ...signupPayload, password: '***' } // Don't log actual password
+      });
+    }
 
     return this.http.post<AuthResponse>(
-      `${this.apiUrl}/signup`,  // Try /signup first
+      url, // Use the constructed URL
       signupPayload,
-      httpOptions
+      { ...httpOptions, observe: 'response' as const }
     ).pipe(
-      tap(response => {
-        console.log('Signup successful:', response);
-        if (response.token && response.user) {
-          this.storeAuthData(response);
+      map(response => {
+        const responseData = response.body!; // We know body exists because we got a successful response
+        console.log('Signup successful:', responseData);
+
+        if (responseData?.token) {
+          // Store the authentication data
+          this.storeAuthData({
+            token: responseData.token,
+            user: {
+              id: responseData.id,
+              username: responseData.username,
+              email: responseData.email,
+              roles: responseData.roles || []
+            }
+          });
+
           this.isLoggedInSubject.next(true);
-          this.currentUserSubject.next(response.user);
+
+          // Create a user object from the response data
+          const user: User = {
+            id: responseData.id,
+            username: responseData.username,
+            email: responseData.email,
+            roles: responseData.roles || []
+          };
+
+          this.currentUserSubject.next(user);
         }
+        return responseData; // Return just the AuthResponse
       }),
-      catchError(error => {
-        console.error('Signup error:', {
-          error,
-          status: error.status,
-          message: error.message,
-          url: error.url,
-          method: error.method
-        });
-        
-        // If signup with /signup fails, try with /register
-        if (error.status === 405) {
-          console.log('Trying with /register endpoint');
-          return this.http.post<AuthResponse>(
-            `${this.apiUrl}/register`,
-            signupPayload,
-            httpOptions
-          ).pipe(
-            tap(registerResponse => {
-              if (registerResponse.token && registerResponse.user) {
-                this.storeAuthData(registerResponse);
-                this.isLoggedInSubject.next(true);
-                this.currentUserSubject.next(registerResponse.user);
-              }
-            })
-          );
+      catchError((error: any) => {
+        console.error('Signup error:', error);
+        let errorMessage = 'An error occurred during signup. Please try again.';
+          
+        if (error) {
+          if (error.status === 0) {
+            errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+          } else if (error.status === 400) {
+            errorMessage = error.error?.message || 'Invalid request. Please check your input.';
+          } else if (error.status === 405) {
+            errorMessage = 'Signup is not available. Please contact support.';
+          }
         }
-        
-        this.clearAuthData();
-        throw error;
+
+        return throwError(() => new Error(errorMessage));
       })
     );
-  }
-
-  private storeAuthData(authData: any): void {
-    console.log('[AuthService] Storing auth data in localStorage');
-    // Store the token from either accessToken or token field
-    const token = authData.accessToken || authData.token;
-    if (!token) {
-      console.error('[AuthService] No token found in auth response');
-      throw new Error('No authentication token received from server');
-    }
-    localStorage.setItem('auth_token', token);
-    console.log('[AuthService] Token stored in localStorage');
-
-    if (authData.refreshToken) {
-      localStorage.setItem('refresh_token', authData.refreshToken);
-    }
-    const userData = authData.user || {};
-    localStorage.setItem('user', JSON.stringify(userData));
-
-    // Update both subjects and ensure they're in sync
-    this.currentUserSubject.next(userData);
-    this.isLoggedInSubject.next(true);
-
-    console.log('[AuthService] Auth state updated - isLoggedIn:', true, 'user:', userData);
-  }
-
-  clearAuthData(): void {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    this.isLoggedInSubject.next(false);
-    this.currentUserSubject.next(null);
   }
 
   getCurrentUser(): User | null {
@@ -226,8 +294,9 @@ export class AuthService {
 
   // Check if user has any of the specified roles
   hasAnyRole(roles: string[]): boolean {
-    if (!roles || roles.length === 0) return true;
-    const user = this.getCurrentUser();
-    return (user?.roles?.some(role => roles.includes(role))) ?? false;
+    if (!roles || roles.length === 0) {
+      return true; // If no roles required, allow access
+    }
+    return roles.some(role => this.hasRole(role));
   }
 }

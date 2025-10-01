@@ -4,6 +4,12 @@
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug",
-    "withCredentials": true
+    "withCredentials": true,
+    "pathRewrite": {
+      "^/api": ""
+    },
+    "headers": {
+      "Connection": "keep-alive"
+    }
   }
 }

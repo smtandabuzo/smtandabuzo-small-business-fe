@@ -146,9 +146,6 @@ export class MainLayoutComponent {
   navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/invoices', label: 'Invoices', icon: '📄' },
-    { path: '/clients', label: 'Clients', icon: '👥' },
-    { path: '/products', label: 'Products', icon: '📦' },
-    { path: '/expenses', label: 'Expenses', icon: '💰' },
     { path: '/reports', label: 'Reports', icon: '📈' },
     { path: '/settings', label: 'Settings', icon: '⚙️' }
   ];

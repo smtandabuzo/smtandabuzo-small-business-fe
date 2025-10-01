@@ -1,147 +1,64 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Observable, catchError, throwError } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { CreateInvoiceDto, Invoice } from '../models/invoice.model';
-import { AuthService } from './auth.service';
-import { catchError, switchMap } from 'rxjs/operators';
-import { throwError } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class InvoiceService {
-  private apiUrl = '/api';
+  private apiUrl = `${environment.apiUrl}/invoices`;
 
-  constructor(
-    private http: HttpClient,
-    private authService: AuthService
-  ) {
-    console.log('InvoiceService initialized with API URL:', this.apiUrl);
-  }
-
-  /*private getAuthHeaders(): HttpHeaders {
-    const token = this.authService.getToken();
-    if (!token) {
-      console.error('No authentication token found. User might not be logged in.');
-      throw new Error('Authentication required. Please log in.');
-    }
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    });
-  }*/
-
-  // In your invoice.service.ts
-  private getAuthHeaders(): HttpHeaders {
-    const token = this.authService.getToken();
-    if (!token) {
-      console.error('No authentication token found');
-      throw new Error('Authentication required');
-    }
-
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    });
+  constructor(private http: HttpClient) {
+    console.log('InvoiceService initialized');
   }
 
   getInvoices(): Observable<Invoice[]> {
-    const headers = this.getAuthHeaders();
-    return this.http.get<Invoice[]>(`${this.apiUrl}/invoices`, {
-      headers,
-      withCredentials: true
-    }).pipe(
-      catchError(error => {
-        console.error('Error in getInvoices:', error);
-        if (error.status === 401) {
-          console.error('Authentication failed. Please log in again.');
-          this.authService.logout();
-        }
-        return throwError(() => error);
-      })
+    return this.http.get<Invoice[]>(this.apiUrl).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getInvoice(id: string): Observable<Invoice> {
+    return this.http.get<Invoice>(`${this.apiUrl}/${id}`).pipe(
+      catchError(this.handleError)
     );
   }
 
   createInvoice(invoice: CreateInvoiceDto): Observable<Invoice> {
-    try {
-      const headers = this.getAuthHeaders();
-      // Using camelCase to match the backend's InvoiceRequest DTO
-      const payload = {
-        customer_name: invoice.customerName,
-        customer_email: invoice.customerEmail,
-        issue_date: invoice.issueDate,
-        due_date: invoice.dueDate,
-        amount: invoice.amount,
-        status: invoice.status,
-        description: invoice.description
-      };
-
-      // Format dates to include time portion for proper ISO string conversion
-      const formatDate = (dateStr: string): string => {
-        // Add time portion to ensure proper timezone handling
-        const date = new Date(dateStr);
-        // Set to noon UTC to avoid timezone issues
-        date.setUTCHours(12, 0, 0, 0);
-        return date.toISOString();
-      };
-
-      const formattedPayload = {
-        ...payload,
-        issueDate: formatDate(payload.issue_date),
-        dueDate: formatDate(payload.due_date)
-      };
-
-      console.log('Sending invoice data:', JSON.stringify(formattedPayload, null, 2));
-
-      return this.http.post<Invoice>(`${this.apiUrl}/invoices`, formattedPayload, {
-        headers,
-        withCredentials: true // Important for sending cookies/session
-      }).pipe(
-        catchError(error => {
-          console.error('Full error response:', JSON.stringify(error, null, 2));
-          console.error('Error creating invoice:', error);
-          if (error.status === 401) {
-            console.error('Authentication failed. Please log in again.');
-            // You might want to redirect to login here
-            // this.router.navigate(['/login']); // Uncomment and inject Router if needed
-          }
-          return throwError(() => error);
-        })
-      );
-    } catch (error) {
-      console.error('Error preparing invoice request:', error);
-      return throwError(() => error);
-    }
+    console.log('Sending invoice data:', JSON.stringify(invoice, null, 2));
+    return this.http.post<Invoice>(this.apiUrl, invoice).pipe(
+      tap(response => {
+        console.log('Invoice created successfully:', response);
+      }),
+      catchError(error => {
+        console.error('Error creating invoice:', error);
+        if (error.error) {
+          console.error('Error details:', error.error);
+        }
+        return this.handleError(error);
+      })
+    );
   }
 
-  /*getInvoices(): Observable<Invoice[]> {
-    try {
-      const headers = this.getAuthHeaders();
-      console.log('Fetching invoices with headers:', headers);
-      return this.http.get<Invoice[]>(`${this.apiUrl}/invoices`, {
-        headers,
-        withCredentials: true // Ensure credentials are included
-      }).pipe(
-        catchError(error => {
-          console.error('Error in getInvoices API call:', {
-            status: error.status,
-            statusText: error.statusText,
-            error: error.error,
-            url: error.url,
-            headers: error.headers
-          });
-          return throwError(() => new Error('Failed to load invoices. Please try again later.'));
-        })
-      );
-    } catch (error) {
-      console.error('Error preparing invoices request:', error);
-      return throwError(() => new Error('Failed to prepare invoices request.'));
-    }
+  updateInvoice(id: string, invoice: Partial<Invoice>): Observable<Invoice> {
+    return this.http.put<Invoice>(`${this.apiUrl}/${id}`, invoice).pipe(
+      catchError(this.handleError)
+    );
   }
-*/
-  getInvoice(id: string): Observable<Invoice> {
-    const headers = this.getAuthHeaders();
-    return this.http.get<Invoice>(`${this.apiUrl}/invoices/${id}`, { headers });
+
+  private handleError(error: any) {
+    console.error('API Error:', error);
+    let errorMessage = 'An error occurred';
+    if (error.error instanceof ErrorEvent) {
+      // Client-side error
+      errorMessage = `Error: ${error.error.message}`;
+    } else {
+      // Server-side error
+      errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+    }
+    return throwError(() => new Error(errorMessage));
   }
 }

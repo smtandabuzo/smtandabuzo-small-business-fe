@@ -1,0 +1,129 @@
+<div class="reports-container">
+  <mat-card class="filter-card">
+    <mat-card-header>
+      <mat-card-title>Report Filters</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="filter-form">
+        <div class="form-group">
+          <mat-form-field appearance="outline">
+            <mat-label>Start Date</mat-label>
+            <input matInput [matDatepicker]="startPicker" [(ngModel)]="filters.startDate" (dateChange)="onFilterChange()">
+            <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+            <mat-datepicker #startPicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+
+        <div class="form-group">
+          <mat-form-field appearance="outline">
+            <mat-label>End Date</mat-label>
+            <input matInput [matDatepicker]="endPicker" [(ngModel)]="filters.endDate" (dateChange)="onFilterChange()">
+            <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+            <mat-datepicker #endPicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+
+        <div class="form-group">
+          <mat-form-field appearance="outline">
+            <mat-label>Group By</mat-label>
+            <mat-select [(ngModel)]="filters.groupBy" (selectionChange)="onFilterChange()">
+              <mat-option *ngFor="let option of groupByOptions" [value]="option.value">
+                {{ option.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <div *ngIf="loading" class="loading-spinner">
+    <mat-spinner></mat-spinner>
+    <p>Loading report data...</p>
+  </div>
+
+  <div *ngIf="error" class="error-message">
+    <mat-icon>error_outline</mat-icon>
+    <p>{{ error }}</p>
+  </div>
+
+  <div *ngIf="reportData && !loading" class="report-content">
+    <mat-card class="summary-card">
+      <mat-card-header>
+        <mat-card-title>Invoice Summary</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="summary-value">{{ reportData.totalInvoices }}</div>
+            <div class="summary-label">Total Invoices</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value">{{ reportData.totalInvoiceAmount | currency }}</div>
+            <div class="summary-label">Total Amount</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value">{{ reportData.totalPaidAmount | currency }}</div>
+            <div class="summary-label">Total Paid</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-value">{{ reportData.totalOutstanding | currency }}</div>
+            <div class="summary-label">Outstanding</div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <div class="charts-container">
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>Invoice Amounts</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <canvas id="invoiceChart"></canvas>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>Payment Methods</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <canvas id="paymentChart"></canvas>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <mat-card class="details-card">
+      <mat-card-header>
+        <mat-card-title>Payment Details</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="reportData.paymentSummary" class="payment-table">
+          <ng-container matColumnDef="paymentMethod">
+            <th mat-header-cell *matHeaderCellDef>Payment Method</th>
+            <td mat-cell *matCellDef="let payment">{{ payment.paymentMethod }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="count">
+            <th mat-header-cell *matHeaderCellDef>Count</th>
+            <td mat-cell *matCellDef="let payment">{{ payment.count }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="totalAmount">
+            <th mat-header-cell *matHeaderCellDef>Total Amount</th>
+            <td mat-cell *matCellDef="let payment">{{ payment.totalAmount | currency }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="percentage">
+            <th mat-header-cell *matHeaderCellDef>Percentage</th>
+            <td mat-cell *matCellDef="let payment">{{ payment.percentage | number:'1.0-1' }}%</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['paymentMethod', 'count', 'totalAmount', 'percentage']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['paymentMethod', 'count', 'totalAmount', 'percentage'];"></tr>
+        </table>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
