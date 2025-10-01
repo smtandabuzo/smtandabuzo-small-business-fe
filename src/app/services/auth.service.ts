@@ -4,12 +4,13 @@ import { BehaviorSubject, Observable, of } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { SignUpRequest, AuthResponse, User } from '../models/user.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = '/api/auth'; // Use relative URL since we're using a proxy
+  private apiUrl = `${environment.apiUrl}/auth`; // Use relative URL since we're using a proxy
   private isLoggedInSubject: BehaviorSubject<boolean>;
   private currentUserSubject: BehaviorSubject<User | null>;
   redirectUrl: string | null = null;
@@ -19,10 +20,10 @@ export class AuthService {
     const token = localStorage.getItem('auth_token');
     const userJson = localStorage.getItem('user');
     const user = userJson ? JSON.parse(userJson) : null;
-    
+
     this.isLoggedInSubject = new BehaviorSubject<boolean>(!!token);
     this.currentUserSubject = new BehaviorSubject<User | null>(user);
-    
+
     console.log('[AuthService] Initialized with token:', !!token, 'user:', user);
   }
 
@@ -36,26 +37,37 @@ export class AuthService {
     return this.currentUserSubject.asObservable();
   }
 
+  // Get the current authentication token
+  getToken(): string | null {
+    const token = localStorage.getItem('auth_token');
+    console.log('[AuthService] Retrieved token from localStorage:', token ? 'Token exists' : 'No token found');
+    return token;
+  }
+
   login(credentials: { username: string; password: string }): Observable<any> {
-    console.log('[AuthService] Login request started');
-    return this.http.post<any>(`${this.apiUrl}/signin`, credentials).pipe(
+    return this.http.post(`${this.apiUrl}/signin`, credentials).pipe(
       tap({
-        next: (response) => {
-          console.log('[AuthService] Login successful, storing auth data');
-          if (response && response.accessToken) {
+        next: (response: any) => {
+          if (response && response.token) {
             this.storeAuthData(response);
-            // No need to call next() here as storeAuthData will do it
-            console.log('[AuthService] Auth data stored, isLoggedIn should be true');
+            this.isLoggedInSubject.next(true);
+            // Store the user data in the behavior subject
+            if (response.user) {
+              this.currentUserSubject.next(response.user);
+            }
+            // Navigate to the return URL if available, or to the dashboard
+            const returnUrl = this.redirectUrl || '/dashboard';
+            this.router.navigateByUrl(returnUrl);
+          } else {
+            console.error('[AuthService] No token in login response');
+            throw new Error('No authentication token received');
           }
         },
         error: (error) => {
           console.error('[AuthService] Login error:', error);
           this.clearAuthData();
+          throw error;
         }
-      }),
-      catchError(error => {
-        this.clearAuthData();
-        throw error;
       })
     );
   }
@@ -98,17 +110,25 @@ export class AuthService {
 
   private storeAuthData(authData: any): void {
     console.log('[AuthService] Storing auth data in localStorage');
-    localStorage.setItem('auth_token', authData.accessToken);
+    // Store the token from either accessToken or token field
+    const token = authData.accessToken || authData.token;
+    if (!token) {
+      console.error('[AuthService] No token found in auth response');
+      throw new Error('No authentication token received from server');
+    }
+    localStorage.setItem('auth_token', token);
+    console.log('[AuthService] Token stored in localStorage');
+
     if (authData.refreshToken) {
       localStorage.setItem('refresh_token', authData.refreshToken);
     }
     const userData = authData.user || {};
     localStorage.setItem('user', JSON.stringify(userData));
-    
+
     // Update both subjects and ensure they're in sync
     this.currentUserSubject.next(userData);
     this.isLoggedInSubject.next(true);
-    
+
     console.log('[AuthService] Auth state updated - isLoggedIn:', true, 'user:', userData);
   }
 

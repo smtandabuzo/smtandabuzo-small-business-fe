@@ -31,10 +31,23 @@ export const AuthGuard: CanActivateFn = (
   const authService = inject(AuthService);
   const router = inject(Router);
 
+  // First check if we have a token in local storage
+  const token = localStorage.getItem('auth_token');
+  console.log('[AuthGuard] Token exists:', !!token);
+  
+  // If no token, redirect to login
+  if (!token) {
+    console.log('[AuthGuard] No token found, redirecting to login');
+    return of(router.createUrlTree(['/auth/login'], {
+      queryParams: { returnUrl: state.url }
+    }));
+  }
+
+  // If we have a token, verify the auth state
   return authService.isLoggedIn$.pipe(
     take(1),
     map(isLoggedIn => {
-      console.log('[AuthGuard] isLoggedIn:', isLoggedIn);
+      console.log('[AuthGuard] Auth state - isLoggedIn:', isLoggedIn);
       
       if (isLoggedIn) {
         // Check if route is restricted by role
@@ -56,27 +69,36 @@ export const AuthGuard: CanActivateFn = (
         return true;
       }
 
-      // Not logged in, redirect to login page with a clean return url
-      console.log('[AuthGuard] User not authenticated, redirecting to login');
+      // If we have a token but not logged in, try to get user info
+      console.log('[AuthGuard] Token exists but not logged in, checking user info...');
+      const user = authService.getCurrentUser();
       
-      // Clean and validate the return URL
-      const cleanReturnUrl = getValidReturnUrl(state.url);
-      
-      // Only set redirectUrl if it's a clean URL
-      if (cleanReturnUrl) {
-        authService.redirectUrl = cleanReturnUrl;
-        console.log('[AuthGuard] Stored clean redirect URL:', cleanReturnUrl);
-      } else {
-        console.log('[AuthGuard] Using default redirect URL (dashboard)');
-        authService.redirectUrl = '/dashboard';
+      if (user) {
+        console.log('[AuthGuard] User info found, updating auth state');
+        // Update the current user in the auth service
+        (authService as any).currentUserSubject.next(user);
+        (authService as any).isLoggedInSubject.next(true);
+        return true;
       }
+
+      // If we get here, the token might be invalid
+      console.log('[AuthGuard] Token exists but no user info, redirecting to login');
+      authService.clearAuthData();
       
-      // Always redirect to /auth/login without returnUrl to prevent loops
-      return router.createUrlTree(['/auth/login']);
+      // Store the attempted URL for redirecting after login
+      authService.redirectUrl = state.url;
+      
+      // Redirect to the login page
+      return router.createUrlTree(['/auth/login'], {
+        queryParams: { returnUrl: state.url }
+      });
     }),
     catchError(error => {
       console.error('[AuthGuard] Error checking authentication:', error);
-      return of(router.createUrlTree(['/auth/login']));
+      authService.clearAuthData();
+      return of(router.createUrlTree(['/auth/login'], {
+        queryParams: { returnUrl: state.url }
+      }));
     })
   );
 };

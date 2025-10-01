@@ -26,6 +26,12 @@ export const publicRoutes: Routes = [
         path: 'signup', 
         component: SignupComponent
       },
+      // Add this route for the redirect
+      {
+        path: 'redirect',
+        redirectTo: '/dashboard',
+        pathMatch: 'full'
+      },
       { path: '', redirectTo: 'login', pathMatch: 'full' }
     ]
   }
@@ -75,7 +81,7 @@ export const protectedRoutes: Routes = [
 const appRoutes: Routes = [
   ...publicRoutes,
   ...protectedRoutes,
-  { path: '**', redirectTo: 'dashboard' } // Fallback route
+  { path: '**', redirectTo: '/dashboard' } // Fallback route
 ];
 
 export const routes = appRoutes;

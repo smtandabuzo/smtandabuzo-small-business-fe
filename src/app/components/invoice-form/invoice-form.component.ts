@@ -246,11 +246,16 @@ export class InvoiceFormComponent {
     this.isSubmitting = true;
     this.error = null;
 
-    // Prepare the invoice data
+    // Create a new object with only the fields the backend expects
+    const formValue = this.invoiceForm.value;
     const invoiceData: CreateInvoiceDto = {
-      ...this.invoiceForm.value,
-      // Ensure amount is a number
-      amount: parseFloat(this.invoiceForm.value.amount)
+      customerName: formValue.customerName,
+      customerEmail: formValue.customerEmail,
+      issueDate: formValue.issueDate,
+      dueDate: formValue.dueDate,
+      description: formValue.description,
+      amount: parseFloat(formValue.amount),
+      status: formValue.status
     };
 
     // Call the service to create the invoice
@@ -258,7 +263,6 @@ export class InvoiceFormComponent {
       next: () => {
         this.isSubmitting = false;
         this.created.emit();
-        // Optionally, navigate to the invoices list or show a success message
         this.router.navigate(['/invoices']);
       },
       error: (error) => {

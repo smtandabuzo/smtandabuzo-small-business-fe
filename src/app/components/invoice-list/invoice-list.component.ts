@@ -82,14 +82,33 @@ export class InvoiceListComponent implements OnInit {
     this.invoiceService.getInvoices().subscribe({
       next: (invoices) => {
         this.invoices = invoices;
-        this.totalPages = Math.ceil(this.invoices.length / this.itemsPerPage);
+        this.totalPages = Math.max(1, Math.ceil(this.invoices.length / this.itemsPerPage));
         this.updatePaginatedInvoices();
         this.isLoading = false;
       },
       error: (error) => {
         console.error('Error loading invoices:', error);
-        this.error = 'Failed to load invoices. Please try again later.';
+        
+        let errorMessage = 'Failed to load invoices. ';
+        
+        if (error.status === 401) {
+          errorMessage += 'Please log in again.';
+          // Optionally redirect to login
+          // this.router.navigate(['/login']);
+        } else if (error.status === 500) {
+          errorMessage += 'Server error occurred. Please try again later or contact support if the problem persists.';
+        } else if (error.message) {
+          errorMessage += error.message;
+        }
+        
+        this.error = errorMessage;
         this.isLoading = false;
+        
+        // Show error toast
+        this.snackBar.open(errorMessage, 'Dismiss', {
+          duration: 5000,
+          panelClass: ['error-snackbar']
+        });
       }
     });
   }

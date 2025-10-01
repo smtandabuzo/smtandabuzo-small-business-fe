@@ -55,19 +55,23 @@ export class LoginComponent {
     const { username, password } = this.loginForm.value;
     console.log('Attempting login with username:', username);
 
-    // Subscribe to isLoggedIn$ to wait for auth state update
-    const authStateSub = this.authService.isLoggedIn$.pipe(
+    // Store the subscription to clean it up later
+    let authStateSub = this.authService.isLoggedIn$.pipe(
       filter(isLoggedIn => isLoggedIn === true),
       take(1),
-      timeout(5000) // 5 second timeout in case something goes wrong
+      timeout(10000) // Increased timeout to 10 seconds
     ).subscribe({
       next: () => {
         console.log('[Login] Auth state updated - user is logged in');
         this.handleSuccessfulLogin();
+        if (authStateSub) {
+          authStateSub.unsubscribe();
+        }
       },
       error: (err) => {
-        console.error('[Login] Error waiting for auth state update:', err);
-        this.handleSuccessfulLogin(); // Still try to proceed
+        console.error('[Login] Error in auth state update:', err);
+        // Even if we get an error, try to proceed with the login
+        this.handleSuccessfulLogin();
       }
     });
 
@@ -93,35 +97,48 @@ export class LoginComponent {
     console.log('[Login] Handling successful login');
     this.isLoading = false;
     
-    // Determine the redirect URL in order of preference:
-    // 1. URL from query parameters (if valid)
-    // 2. URL from auth service (if any)
-    // 3. Default to '/dashboard'
+    // Always use absolute path for navigation
     let redirectUrl = '/dashboard';
     
-    if (this.returnUrl && !this.returnUrl.includes('login')) {
-      redirectUrl = this.returnUrl;
-    } else if (this.authService.redirectUrl) {
-      redirectUrl = this.authService.redirectUrl;
+    // Check for return URL in query params first
+    if (this.returnUrl && !this.returnUrl.includes('login') && this.returnUrl !== '/') {
+      redirectUrl = this.returnUrl.startsWith('/') ? this.returnUrl : `/${this.returnUrl}`;
+      console.log('Using returnUrl from query params:', redirectUrl);
+    } 
+    // Then check auth service redirect URL
+    else if (this.authService.redirectUrl) {
+      redirectUrl = this.authService.redirectUrl.startsWith('/') ? 
+                   this.authService.redirectUrl : 
+                   `/${this.authService.redirectUrl}`;
+      console.log('Using redirectUrl from auth service:', redirectUrl);
     }
     
-    console.log('Redirecting to:', redirectUrl);
+    console.log('Final redirect URL:', redirectUrl);
     
     // Clear the redirect URL before navigation
     this.authService.redirectUrl = null;
     
-    // Navigate to the target URL
-    this.router.navigateByUrl(redirectUrl, { 
-      replaceUrl: true 
-    }).then(success => {
-      console.log('Navigation success:', success);
-      if (!success) {
-        console.log('Navigation failed, falling back to dashboard');
-        this.router.navigate(['/dashboard'], { replaceUrl: true });
-      }
-    }).catch(err => {
-      console.error('Navigation error, falling back to dashboard:', err);
-      this.router.navigate(['/dashboard'], { replaceUrl: true });
-    });
+    // Use a small delay to ensure the auth state is properly updated
+    setTimeout(() => {
+      console.log('Navigating to:', redirectUrl);
+      this.router.navigateByUrl(redirectUrl, { 
+        replaceUrl: true 
+      }).then(success => {
+        console.log('Navigation success:', success);
+        if (!success) {
+          console.warn('Navigation failed, falling back to /dashboard');
+          this.router.navigate(['/dashboard'], { 
+            replaceUrl: true,
+            queryParamsHandling: 'merge'
+          });
+        }
+      }).catch(error => {
+        console.error('Navigation error:', error);
+        this.router.navigate(['/dashboard'], { 
+          replaceUrl: true,
+          queryParamsHandling: 'merge'
+        });
+      });
+    }, 100);
   }
 }
