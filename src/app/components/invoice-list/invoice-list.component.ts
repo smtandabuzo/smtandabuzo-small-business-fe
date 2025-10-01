@@ -48,9 +48,9 @@ export class InvoiceListComponent implements OnInit {
   constructor(
     private invoiceService: InvoiceService,
     private paymentService: PaymentService,
-    private router: Router,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private router: Router
   ) {}
 
   viewInvoice(id: string): void {

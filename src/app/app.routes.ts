@@ -3,6 +3,7 @@ import { ItemList } from './components/item-list/item-list';
 import { ItemForm } from './components/item-form/item-form';
 import { InvoiceListComponent } from './components/invoice-list/invoice-list.component';
 import { InvoiceFormComponent } from './components/invoice-form/invoice-form.component';
+import { InvoiceDetailComponent } from './components/invoice-detail/invoice-detail.component';
 import { SignupComponent } from './components/signup/signup.component';
 import { LoginComponent } from './components/login/login.component';
 import { AuthGuard } from './core/guards/auth.guard';
@@ -69,6 +70,17 @@ export const protectedRoutes: Routes = [
       },
       { 
         path: 'invoices/new', 
+        component: InvoiceFormComponent,
+        data: { roles: ['ADMIN', 'EDITOR'] },
+        providers: [provideHttpClient()]
+      },
+      { 
+        path: 'invoices/:id', 
+        component: InvoiceDetailComponent,
+        providers: [provideHttpClient()]
+      },
+      { 
+        path: 'invoices/edit/:id', 
         component: InvoiceFormComponent,
         data: { roles: ['ADMIN', 'EDITOR'] },
         providers: [provideHttpClient()]
